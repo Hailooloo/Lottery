@@ -21,13 +21,12 @@
             margin: 0 auto;
         }
 
-        #wheel {
+        #wheel-canvas {
             width: 100%;
             height: 100%;
             border-radius: 50%;
             border: 8px solid #1e293b;
             transition: transform 4s cubic-bezier(0.1, 0, 0.2, 1);
-            overflow: hidden;
             position: relative;
         }
 
@@ -110,7 +109,7 @@
             
             <!-- 左侧：转盘与奖品表 -->
             <div class="lg:col-span-8 space-y-8">
-                <div class="bg-slate-900/50 backdrop-blur-xl rounded-3xl p-8 border border-white/5 shadow-2xl">
+                <div class="bg-slate-900/50 backdrop-blur-xl rounded-3xl p-8 border border-white/5 shadow-2xl text-center">
                     <div class="wheel-container">
                         <div class="pointer"></div>
                         <canvas id="wheel-canvas" width="320" height="320"></canvas>
@@ -186,7 +185,7 @@
         const roundCountEl = document.getElementById('round-count');
         const statusMsgEl = document.getElementById('status-msg');
 
-        // 奖品数据定义 (概率由大到小对应扇区位置)
+        // 奖品数据定义
         const prizeConfig = [
             { text: "一等奖", color: "#f59e0b", amount: 100, prob: 0.05 },
             { text: "二等奖", color: "#3b82f6", amount: 80, prob: 0.10 },
@@ -239,7 +238,6 @@
         function startSpin() {
             if (isSpinning) return;
             
-            // 如果一轮已经结束，重置数据
             if (isRoundFinished) {
                 resetRound();
                 return;
@@ -264,15 +262,19 @@
 
             const prize = prizeConfig[resultIndex];
             
-            // 计算旋转角度
-            // 每个扇区的大小是 360 / 6 = 60度
+            // 修正指针与扇区的偏移逻辑
+            // 扇区是顺时针 0, 60, 120... 绘制的，0度在正右方
+            // 指针在正上方（-90度位置）
+            // 因此我们需要旋转 -(resultIndex * 60 + 30) 度的角度，并加上 270 度的偏移来对准顶部指针
             const stepDeg = 360 / prizeConfig.length;
-            // 指向 resultIndex 扇区中心所需的旋转
-            // 注意：转盘顺时针转，所以是用 360 - 角度。指针在顶部（-90度位置）
-            const baseRotation = 360 * 5; // 至少转5圈
-            const targetRotation = 360 - (resultIndex * stepDeg + stepDeg / 2);
+            const targetRotation = 270 - (resultIndex * stepDeg + stepDeg / 2);
             
-            currentRotation += baseRotation + (targetRotation - (currentRotation % 360) + 360) % 360;
+            // 增加基础转圈数 (10圈)
+            const baseRotation = 360 * 10; 
+            
+            // 计算最终相对于当前旋转的增量，确保转盘始终顺时针旋转
+            const rotateTo = baseRotation + (targetRotation - (currentRotation % 360) + 360) % 360;
+            currentRotation += rotateTo;
 
             canvas.style.transition = 'transform 4s cubic-bezier(0.1, 0, 0.2, 1)';
             canvas.style.transform = `rotate(${currentRotation}deg)`;
@@ -287,15 +289,13 @@
             roundCount++;
             totalAmount += prize.amount;
 
-            // 更新汇总显示
             totalAmountEl.innerText = totalAmount;
             roundCountEl.innerText = `第 ${roundCount}/10 次`;
 
-            // 添加日志
             if (roundCount === 1) logsEl.innerHTML = '';
             
             const logItem = document.createElement('div');
-            logItem.className = 'flex justify-between items-center p-3 rounded-xl bg-white/5 border border-white/5 fade-in';
+            logItem.className = 'flex justify-between items-center p-3 rounded-xl bg-white/5 border border-white/5 animate-pulse';
             const statusColor = prize.amount > 0 ? 'text-blue-400' : 'text-slate-500';
             logItem.innerHTML = `
                 <span class="text-sm">第 ${roundCount} 次：${prize.text}</span>
@@ -303,11 +303,10 @@
             `;
             logsEl.prepend(logItem);
 
-            // 检查中止条件
             if (prize.text === "谢谢参与") {
-                finishRound("抽中“谢谢参与”，本轮由于意外提前中止！", "bg-red-500/20 text-red-400");
+                finishRound("抽中“谢谢参与”，本轮已中止结算！", "bg-red-500/20 text-red-400");
             } else if (roundCount >= 10) {
-                finishRound("恭喜！您已完成本轮全部 10 次抽奖！", "bg-green-500/20 text-green-400");
+                finishRound("本轮 10 次抽奖已全部完成！", "bg-green-500/20 text-green-400");
             } else {
                 spinBtn.classList.remove('disabled');
                 spinBtn.innerText = "再抽";
