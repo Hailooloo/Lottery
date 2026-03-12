@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>幸运大转盘 - 赢取丰厚奖金</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700;900&display=swap');
+        
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: #0f172a;
+            color: #f8fafc;
+        }
+
+        .wheel-container {
+            position: relative;
+            width: 320px;
+            height: 320px;
+            margin: 0 auto;
+        }
+
+        #wheel {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 8px solid #1e293b;
+            transition: transform 4s cubic-bezier(0.1, 0, 0.2, 1);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .pointer {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 50px;
+            background: #ef4444;
+            clip-path: polygon(50% 100%, 0 0, 100% 0);
+            z-index: 20;
+            filter: drop-shadow(0 4px 4px rgba(0,0,0,0.5));
+        }
+
+        .center-button {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60px;
+            height: 60px;
+            background: #f8fafc;
+            border-radius: 50%;
+            z-index: 30;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #0f172a;
+            font-weight: 900;
+            cursor: pointer;
+            border: 4px solid #3b82f6;
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+            user-select: none;
+        }
+
+        .center-button:active {
+            transform: translate(-50%, -50%) scale(0.95);
+        }
+
+        .center-button.disabled {
+            background: #64748b;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .log-container {
+            height: 300px;
+            overflow-y: auto;
+        }
+
+        .log-container::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .log-container::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 2px;
+        }
+
+        .prize-row {
+            transition: all 0.3s;
+        }
+
+        .prize-row:hover {
+            background: rgba(59, 130, 246, 0.1);
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto">
+        <header class="text-center mb-10">
+            <h1 class="text-4xl font-black mb-2 tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">幸运大转盘互动抽奖</h1>
+            <p class="text-slate-400">单轮最高抽10次，抽中“谢谢参与”则立即中止并结算</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            <!-- 左侧：转盘与奖品表 -->
+            <div class="lg:col-span-8 space-y-8">
+                <div class="bg-slate-900/50 backdrop-blur-xl rounded-3xl p-8 border border-white/5 shadow-2xl">
+                    <div class="wheel-container">
+                        <div class="pointer"></div>
+                        <canvas id="wheel-canvas" width="320" height="320"></canvas>
+                        <div id="spin-btn" class="center-button" onclick="startSpin()">抽奖</div>
+                    </div>
+                </div>
+
+                <!-- 奖品列表 -->
+                <div class="bg-slate-900/50 backdrop-blur-xl rounded-3xl p-6 border border-white/5 shadow-xl">
+                    <h3 class="text-xl font-bold mb-4 flex items-center">
+                        <span class="mr-2">🎁</span> 奖品对照及概率
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead>
+                                <tr class="text-slate-500 text-sm border-b border-white/10">
+                                    <th class="pb-3 font-medium">级别</th>
+                                    <th class="pb-3 font-medium">奖品金额</th>
+                                    <th class="pb-3 font-medium">中奖概率</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-slate-300">
+                                <tr class="prize-row border-b border-white/5"><td class="py-3">一等奖</td><td class="py-3 text-blue-400 font-bold">100 元</td><td class="py-3">5%</td></tr>
+                                <tr class="prize-row border-b border-white/5"><td class="py-3">二等奖</td><td class="py-3 text-blue-400 font-bold">80 元</td><td class="py-3">10%</td></tr>
+                                <tr class="prize-row border-b border-white/5"><td class="py-3">三等奖</td><td class="py-3 text-blue-400 font-bold">50 元</td><td class="py-3">15%</td></tr>
+                                <tr class="prize-row border-b border-white/5"><td class="py-3">四等奖</td><td class="py-3 text-blue-400 font-bold">20 元</td><td class="py-3">20%</td></tr>
+                                <tr class="prize-row border-b border-white/5"><td class="py-3">五等奖</td><td class="py-3 text-blue-400 font-bold">10 元</td><td class="py-3">25%</td></tr>
+                                <tr class="prize-row"><td class="py-3">谢谢参与</td><td class="py-3 text-slate-500">0 元</td><td class="py-3">25%</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧：抽奖结果展示 -->
+            <div class="lg:col-span-4 space-y-6">
+                <div class="bg-slate-900/50 backdrop-blur-xl rounded-3xl p-6 border border-white/5 shadow-xl sticky top-8">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold">本轮汇总</h3>
+                        <span id="round-count" class="bg-blue-600/20 text-blue-400 px-3 py-1 rounded-full text-xs font-bold">第 0/10 次</span>
+                    </div>
+
+                    <div class="mb-8">
+                        <p class="text-slate-500 text-sm mb-1">本轮累计中奖</p>
+                        <div class="flex items-baseline">
+                            <span class="text-4xl font-black text-white" id="total-amount">0</span>
+                            <span class="ml-2 text-slate-400">元</span>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <h4 class="text-sm font-bold text-slate-500 uppercase tracking-widest">单次中奖明细</h4>
+                        <div id="logs" class="log-container space-y-2">
+                            <div class="text-slate-600 text-sm italic py-10 text-center">暂无抽奖记录...</div>
+                        </div>
+                    </div>
+
+                    <div id="status-msg" class="mt-6 p-4 rounded-xl text-center text-sm font-bold hidden">
+                        <!-- 动态提示信息 -->
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('wheel-canvas');
+        const ctx = canvas.getContext('2d');
+        const spinBtn = document.getElementById('spin-btn');
+        const logsEl = document.getElementById('logs');
+        const totalAmountEl = document.getElementById('total-amount');
+        const roundCountEl = document.getElementById('round-count');
+        const statusMsgEl = document.getElementById('status-msg');
+
+        // 奖品数据定义 (概率由大到小对应扇区位置)
+        const prizeConfig = [
+            { text: "一等奖", color: "#f59e0b", amount: 100, prob: 0.05 },
+            { text: "二等奖", color: "#3b82f6", amount: 80, prob: 0.10 },
+            { text: "三等奖", color: "#8b5cf6", amount: 50, prob: 0.15 },
+            { text: "四等奖", color: "#10b981", amount: 20, prob: 0.20 },
+            { text: "五等奖", color: "#ec4899", amount: 10, prob: 0.25 },
+            { text: "谢谢参与", color: "#475569", amount: 0, prob: 0.25 }
+        ];
+
+        let currentRotation = 0;
+        let isSpinning = false;
+        let roundCount = 0;
+        let totalAmount = 0;
+        let isRoundFinished = false;
+
+        // 初始化绘制转盘
+        function drawWheel() {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = canvas.width / 2 - 10;
+            const step = Math.PI * 2 / prizeConfig.length;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            prizeConfig.forEach((prize, i) => {
+                const angle = i * step;
+                
+                // 绘制扇区
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, radius, angle, angle + step);
+                ctx.fillStyle = prize.color;
+                ctx.fill();
+                ctx.strokeStyle = '#0f172a';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // 绘制文字
+                ctx.save();
+                ctx.translate(centerX, centerY);
+                ctx.rotate(angle + step / 2);
+                ctx.textAlign = 'right';
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 14px Noto Sans SC';
+                ctx.fillText(prize.text, radius - 20, 5);
+                ctx.restore();
+            });
+        }
+
+        function startSpin() {
+            if (isSpinning) return;
+            
+            // 如果一轮已经结束，重置数据
+            if (isRoundFinished) {
+                resetRound();
+                return;
+            }
+
+            isSpinning = true;
+            spinBtn.classList.add('disabled');
+            spinBtn.innerText = "转...";
+
+            // 计算概率结果
+            const rand = Math.random();
+            let sum = 0;
+            let resultIndex = 0;
+
+            for (let i = 0; i < prizeConfig.length; i++) {
+                sum += prizeConfig[i].prob;
+                if (rand <= sum) {
+                    resultIndex = i;
+                    break;
+                }
+            }
+
+            const prize = prizeConfig[resultIndex];
+            
+            // 计算旋转角度
+            // 每个扇区的大小是 360 / 6 = 60度
+            const stepDeg = 360 / prizeConfig.length;
+            // 指向 resultIndex 扇区中心所需的旋转
+            // 注意：转盘顺时针转，所以是用 360 - 角度。指针在顶部（-90度位置）
+            const baseRotation = 360 * 5; // 至少转5圈
+            const targetRotation = 360 - (resultIndex * stepDeg + stepDeg / 2);
+            
+            currentRotation += baseRotation + (targetRotation - (currentRotation % 360) + 360) % 360;
+
+            canvas.style.transition = 'transform 4s cubic-bezier(0.1, 0, 0.2, 1)';
+            canvas.style.transform = `rotate(${currentRotation}deg)`;
+
+            setTimeout(() => {
+                isSpinning = false;
+                processResult(prize);
+            }, 4000);
+        }
+
+        function processResult(prize) {
+            roundCount++;
+            totalAmount += prize.amount;
+
+            // 更新汇总显示
+            totalAmountEl.innerText = totalAmount;
+            roundCountEl.innerText = `第 ${roundCount}/10 次`;
+
+            // 添加日志
+            if (roundCount === 1) logsEl.innerHTML = '';
+            
+            const logItem = document.createElement('div');
+            logItem.className = 'flex justify-between items-center p-3 rounded-xl bg-white/5 border border-white/5 fade-in';
+            const statusColor = prize.amount > 0 ? 'text-blue-400' : 'text-slate-500';
+            logItem.innerHTML = `
+                <span class="text-sm">第 ${roundCount} 次：${prize.text}</span>
+                <span class="font-bold ${statusColor}">${prize.amount > 0 ? '+' + prize.amount : '0'} 元</span>
+            `;
+            logsEl.prepend(logItem);
+
+            // 检查中止条件
+            if (prize.text === "谢谢参与") {
+                finishRound("抽中“谢谢参与”，本轮由于意外提前中止！", "bg-red-500/20 text-red-400");
+            } else if (roundCount >= 10) {
+                finishRound("恭喜！您已完成本轮全部 10 次抽奖！", "bg-green-500/20 text-green-400");
+            } else {
+                spinBtn.classList.remove('disabled');
+                spinBtn.innerText = "再抽";
+            }
+        }
+
+        function finishRound(msg, classes) {
+            isRoundFinished = true;
+            spinBtn.classList.remove('disabled');
+            spinBtn.innerText = "重置";
+            statusMsgEl.innerText = msg;
+            statusMsgEl.className = `mt-6 p-4 rounded-xl text-center text-sm font-bold ${classes}`;
+            statusMsgEl.classList.remove('hidden');
+        }
+
+        function resetRound() {
+            roundCount = 0;
+            totalAmount = 0;
+            isRoundFinished = false;
+            totalAmountEl.innerText = "0";
+            roundCountEl.innerText = "第 0/10 次";
+            logsEl.innerHTML = '<div class="text-slate-600 text-sm italic py-10 text-center">暂无抽奖记录...</div>';
+            statusMsgEl.classList.add('hidden');
+            spinBtn.innerText = "抽奖";
+        }
+
+        window.onload = drawWheel;
+    </script>
+</body>
+</html>
